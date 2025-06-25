@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Space Explorer | Leon</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <!-- Three.js Canvas -->
+    <div id="space-scene"></div>
+
+    <!-- Content Overlay -->
+    <div class="content-wrapper">
+      <!-- Header with minimal navigation -->
+      <header>
+        <div class="logo">Leon</div>
+        <div class="social-links">
+          <a href="#" target="_blank" aria-label="GitHub"
+            ><i class="fab fa-github"></i
+          ></a>
+          <a href="#" target="_blank" aria-label="LinkedIn"
+            ><i class="fab fa-linkedin"></i
+          ></a>
+          <a href="#" target="_blank" aria-label="Twitter"
+            ><i class="fab fa-twitter"></i
+          ></a>
+        </div>
+      </header>
+      <!-- Loader -->
+      <div id="loader">
+        <div class="loader-content">
+          <div class="planet"></div>
+          <div class="orbiting-moon"></div>
+          <p>Launching into space...</p>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <main>
+        <div class="intro-card">
+          <div class="intro-content">
+            <h1>Hello, I'm <span class="highlight">Leon</span></h1>
+            <h2>Space Explorer & Developer</h2>
+
+            <div class="typing-container">
+              <p>I create <span class="typing-text"></span></p>
+            </div>
+
+            <p class="bio">
+              Exploring the digital universe through code and creativity.
+              Specializing in web development, 3D graphics, and interactive
+              experiences.
+            </p>
+
+            <div class="cta-buttons">
+              <a href="mailto:your.email@example.com" class="btn primary"
+                >Contact Me</a
+              >
+              <a href="#" class="btn secondary">Download Resume</a>
+            </div>
+            <div class="animation-buttons">
+              <button class="anim-btn" data-anim="idle">Idle</button>
+              <button class="anim-btn" data-anim="wave">Wave</button>
+              <button class="anim-btn" data-anim="moon_walk">Moon Walk</button>
+              <button class="anim-btn" data-anim="floating">Salute</button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer>
+        <p>&copy; VMES Three Js Workshop</p>
+      </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="main.js"></script>
+  </body>
+</html>
