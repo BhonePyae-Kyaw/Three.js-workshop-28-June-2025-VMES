@@ -1,0 +1,29 @@
+{
+  "name": "threejs-workshop-example",
+  "version": "1.0.0",
+  "description": "Three.js Workshop - Interactive 3D Scene Example",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve -p 8000",
+    "dev": "serve -p 8000"
+  },
+  "keywords": [
+    "threejs",
+    "3d",
+    "webgl",
+    "workshop",
+    "cyberpunk",
+    "animation"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.0"
+  },
+  "dependencies": {
+    "three": "^0.177.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

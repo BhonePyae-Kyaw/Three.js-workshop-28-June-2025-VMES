@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Workshop Example</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: white;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        #loading.hidden {
+            display: none;
+        }
+
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            text-align: center;
+            background: rgba(255, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="loading">
+            <div class="spinner"></div>
+            <p>Loading 3D Scene...</p>
+        </div>
+        
+        <div id="error">
+            <h3>Error Loading Scene</h3>
+            <p id="error-message"></p>
+        </div>
+
+        <div id="info">
+            <strong>Three.js Workshop Example</strong><br>
+            Mouse: Rotate view<br>
+            Scroll: Zoom in/out<br>
+            Right-click + drag: Pan
+        </div>
+
+        <div id="canvas-container"></div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+
+        // Global variables matching Scene.js
+        let scene, camera, renderer, controls, clock;
+        let computerRoom, deadpool, deadpoolMixer;
+        let textMesh, scrollMesh, glowMeshes, textLight, textures;
+        let particleSystem;
+        let animationId;
+
+        // Loading and error elements
+        const loadingElement = document.getElementById('loading');
+        const errorElement = document.getElementById('error');
+        const errorMessage = document.getElementById('error-message');
+        const canvasContainer = document.getElementById('canvas-container');
+
+        function showError(message) {
+            console.error(message);
+            loadingElement.classList.add('hidden');
+            errorMessage.textContent = message;
+            errorElement.style.display = 'block';
+        }
+
+        function hideLoading() {
+            loadingElement.classList.add('hidden');
+        }
+
+        // Initialize the scene - exact Scene.js recreation
+        function init() {
+            try {
+                // Scene setup
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                clock = new THREE.Clock();
+
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = true;
+                canvasContainer.appendChild(renderer.domElement);
+
+                // Add cyberpunk background
+                setupBackground();
+
+                // Initialize controls after renderer is set up
+                controls = new OrbitControls(camera, renderer.domElement);
+                setupControls();
+
+                setupLights();
+
+                // Load models and text
+                loadModels();
+                loadText();
+
+                // Handle window resize
+                window.addEventListener('resize', onWindowResize);
+
+                animate();
+
+                console.log('Scene initialized successfully');
+            } catch (error) {
+                showError('Failed to initialize 3D scene: ' + error.message);
+            }
+        }
+
+        function setupControls() {
+            if (!controls) return;
+            
+            controls.enablePan = true;
+            controls.enableZoom = true;
+            controls.enableRotate = true;
+            controls.rotateSpeed = 0.5;
+            controls.zoomSpeed = 0.5;
+            controls.minDistance = 2;
+            controls.maxDistance = 10;
+            controls.maxPolarAngle = Math.PI / 2;
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.update();
+        }
+
+        function setupLights() {
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+            scene.add(ambientLight);
+            
+            const spotLight1 = new THREE.SpotLight(0x39ff14, 3.5);
+            spotLight1.position.set(10, 10, 10);
+            spotLight1.angle = 0.15;
+            spotLight1.penumbra = 1;
+            spotLight1.castShadow = true;
+            scene.add(spotLight1);
+            
+            const spotLight2 = new THREE.SpotLight(0x39ff14, 2.7);
+            spotLight2.position.set(-10, 10, -10);
+            spotLight2.angle = 0.15;
+            spotLight2.penumbra = 1;
+            spotLight2.castShadow = true;
+            scene.add(spotLight2);
+            
+            const pointLight1 = new THREE.PointLight(0x39ff14, 3.8);
+            pointLight1.position.set(0, 5, 0);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0x39ff14, 3.2);
+            pointLight2.position.set(0, -5, 0);
+            scene.add(pointLight2);
+        }
+
+        function loadText() {
+            const fontLoader = new FontLoader();
+            fontLoader.load(
+                'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+                () => {
+                    createTextGeometry();
+                },
+                undefined,
+                (error) => {
+                    console.error('Error loading font:', error);
+                    createTextGeometry();
+                }
+            );
+        }
+
+        function createTextGeometry() {
+            const createLEDTexture = (text, width, height) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, 0, width, height);
+                
+                ctx.font = '72px "JetBrains Mono", Consolas, monospace';
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                
+                ctx.shadowColor = '#ff3366';
+                ctx.shadowBlur = 20;
+                
+                for (let y = 0; y < height; y += 2) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                    ctx.fillRect(0, y, width, 1);
+                }
+                
+                ctx.fillStyle = '#ffffff';
+                
+                ctx.fillText(text, 20, height/2);
+                
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const pixels = imageData.data;
+                for (let i = 0; i < pixels.length; i += 16) {
+                    if (pixels[i + 3] > 0) {
+                        pixels[i] = Math.round(pixels[i] / 32) * 32;
+                        pixels[i + 1] = Math.round(pixels[i + 1] / 32) * 32;
+                        pixels[i + 2] = Math.round(pixels[i + 2] / 32) * 32;
+                    }
+                }
+                ctx.putImageData(imageData, 0, 0);
+                
+                return new THREE.CanvasTexture(canvas);
+            };
+
+            const createLEDMaterial = (texture) => new THREE.MeshPhongMaterial({
+                map: texture,
+                emissive: 0xff3366,
+                emissiveIntensity: 0.4,
+                transparent: true,
+                opacity: 0.85,
+                side: THREE.DoubleSide
+            });
+
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff3366,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.DoubleSide
+            });
+
+            const lucasTexture = createLEDTexture('Lucas 👨🏻‍💻', 512, 256);
+            const lucasGeometry = new THREE.PlaneGeometry(0.5, 0.2);
+            textMesh = new THREE.Mesh(lucasGeometry, createLEDMaterial(lucasTexture));
+            textMesh.position.set(1, 0.8, 2.3);
+            textMesh.rotation.y = Math.PI / 2;
+            textMesh.castShadow = false;
+            textMesh.receiveShadow = false;
+            scene.add(textMesh);
+
+            const lucasGlowGeometry = new THREE.PlaneGeometry(0.51, 0.21);
+            const lucasGlowMesh = new THREE.Mesh(lucasGlowGeometry, glowMaterial);
+            lucasGlowMesh.position.copy(textMesh.position);
+            lucasGlowMesh.rotation.copy(textMesh.rotation);
+            lucasGlowMesh.position.z -= 0.001;
+            scene.add(lucasGlowMesh);
+
+            const scrollTexture = createLEDTexture('Full Stack Developer', 1024, 256);
+            const scrollGeometry = new THREE.PlaneGeometry(0.8, 0.15);
+            scrollMesh = new THREE.Mesh(scrollGeometry, createLEDMaterial(scrollTexture));
+            scrollMesh.position.set(1, 0.6, 2.15);
+            scrollMesh.rotation.y = Math.PI / 2;
+            scrollMesh.castShadow = true;
+            scrollMesh.receiveShadow = true;
+            scene.add(scrollMesh);
+
+            const scrollGlowGeometry = new THREE.PlaneGeometry(0.81, 0.16);
+            const scrollGlowMesh = new THREE.Mesh(scrollGlowGeometry, glowMaterial);
+            scrollGlowMesh.position.copy(scrollMesh.position);
+            scrollGlowMesh.rotation.copy(scrollMesh.rotation);
+            scrollGlowMesh.position.z -= 0.001;
+            scene.add(scrollGlowMesh);
+            
+            textLight = new THREE.PointLight(0xff3366, 4.2, 2);
+            textLight.position.set(1, 0.7, 2.2);
+            scene.add(textLight);
+
+            // Add moon
+            const moonGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+            const moonMaterial = new THREE.MeshPhongMaterial({
+                color: 0xfefce5,
+                emissive: 0xfefce5,
+                emissiveIntensity: 5,
+                shininess: 100,
+                map: null,
+                bumpMap: null,
+                bumpScale: 0.05,
+                specularMap: null,
+                specular: new THREE.Color(0xfefce5)
+            });
+            const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+            moon.position.set(-20, 20, -30);
+            scene.add(moon);
+
+            // Add moon glow
+            const moonGlowGeometry = new THREE.SphereGeometry(1.6, 32, 32);
+            const moonGlowMaterial = new THREE.MeshBasicMaterial({
+                color: 0x4444ff,
+                transparent: true,
+                opacity: 0.15
+            });
+            const moonGlow = new THREE.Mesh(moonGlowGeometry, moonGlowMaterial);
+            moonGlow.position.copy(moon.position);
+            scene.add(moonGlow);
+
+            // Add moon light
+            const moonLight = new THREE.PointLight(0x4444ff, 0.8, 50);
+            moonLight.position.copy(moon.position);
+            scene.add(moonLight);
+
+            // Load moon textures
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(
+                './public/textures/moon/moon.jpg',
+                (texture) => {
+                    moonMaterial.map = texture;
+                    moonMaterial.needsUpdate = true;
+                }
+            );
+
+            glowMeshes = [lucasGlowMesh, scrollGlowMesh];
+            textures = [lucasTexture, scrollTexture];
+        }
+
+        function loadModel(path) {
+            const gltfLoader = new GLTFLoader();
+            return new Promise((resolve, reject) => {
+                gltfLoader.load(
+                    path,
+                    (gltf) => resolve(gltf),
+                    undefined,
+                    (error) => reject(error)
+                );
+            });
+        }
+
+        async function loadModels() {
+            try {
+                const [computerRoomModel, deadpoolModel] = await Promise.all([
+                    loadModel('./public/models/computer-room/sci-fi_computer_room.glb'),
+                    loadModel('./public/models/dancing_deadpool/deadpool_dancing.glb')
+                ]);
+
+                computerRoom = computerRoomModel.scene;
+                computerRoom.scale.set(1, 1, 1);
+                computerRoom.position.set(0, 0, 0);
+                scene.add(computerRoom);
+
+                deadpool = deadpoolModel.scene;
+                deadpool.scale.set(0.4, 0.4, 0.45);
+                deadpool.position.set(-0.9, -1, 1.8);
+                scene.add(deadpool);
+
+                const deadpoolLight = new THREE.PointLight(0xff3366, 1, 3);
+                deadpoolLight.position.set(1.5, -1, 1.5);
+                scene.add(deadpoolLight);
+
+                if (deadpoolModel.animations && deadpoolModel.animations.length > 0) {
+                    deadpoolMixer = new THREE.AnimationMixer(deadpool);
+                    const action = deadpoolMixer.clipAction(deadpoolModel.animations[2]);
+                    action.play();
+                }
+
+                // Set camera position and controls target after models are loaded
+                camera.position.set(2, -0.7, 2.7);
+                if (controls) {
+                    controls.target.set(-0.3, 1, -0.1);
+                    controls.update();
+                }
+
+                hideLoading();
+            } catch (error) {
+                showError('Error loading models: ' + error.message);
+            }
+        }
+
+        function setupBackground() {
+            // Create a large grid floor
+            const gridSize = 50;
+            const gridDivisions = 50;
+            const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0xff3366, 0xff3366);
+            gridHelper.position.y = -2;
+            scene.add(gridHelper);
+
+            // Add fog for depth
+            scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+            // Add ambient particles
+            const particleCount = 1000;
+            const particles = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                positions[i3] = (Math.random() - 0.5) * 50;
+                positions[i3 + 1] = Math.random() * 20;
+                positions[i3 + 2] = (Math.random() - 0.5) * 50;
+
+                colors[i3] = Math.random() * 0.5 + 0.5;     // R
+                colors[i3 + 1] = Math.random() * 0.2 + 0.8; // G
+                colors[i3 + 2] = Math.random() * 0.5 + 0.5; // B
+            }
+
+            particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const particleMaterial = new THREE.PointsMaterial({
+                size: 0.1,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            particleSystem = new THREE.Points(particles, particleMaterial);
+            scene.add(particleSystem);
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            // Animate particles
+            if (particleSystem) {
+                const positions = particleSystem.geometry.attributes.position.array;
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i + 1] += Math.sin(Date.now() * 0.001 + i) * 0.01;
+                }
+                particleSystem.geometry.attributes.position.needsUpdate = true;
+            }
+
+            // Update controls if they exist
+            if (controls) {
+                controls.update();
+            }
+
+            // Update Deadpool animation
+            if (deadpoolMixer) {
+                deadpoolMixer.update(0.016);
+            }
+
+            // Render scene
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Cleanup function
+        function cleanup() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            if (deadpoolMixer) {
+                deadpoolMixer.stopAllAction();
+            }
+            if (controls) {
+                controls.dispose();
+            }
+            if (renderer) {
+                renderer.dispose();
+            }
+            window.removeEventListener('resize', onWindowResize);
+        }
+
+        // Handle page unload
+        window.addEventListener('beforeunload', cleanup);
+
+        // Start the application
+        init();
+    </script>
+</body>
+</html>
